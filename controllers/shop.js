@@ -1,9 +1,9 @@
 const Product = require("../models/product");
-const Cart = require("../models/cart");
+// const Cart = require("../models/cart");
 
 exports.getProducts = async (req, res, next) => {
   try {
-    const data = await Product.findAll();
+    const data = await Product.fetchAll();
 
     res.render("shop/product-list", {
       path: "/products",
@@ -18,8 +18,7 @@ exports.getProducts = async (req, res, next) => {
 exports.getProduct = async (req, res, next) => {
   const prodId = req.params.productId;
   try {
-    const product = await Product.findByPk(prodId);
-    console.log(product);
+    const product = await Product.fetchById(prodId);
 
     if (product)
       res.render("shop/product-detail", {
@@ -35,7 +34,7 @@ exports.getProduct = async (req, res, next) => {
 
 exports.getIndex = async (req, res, next) => {
   try {
-    const data = await Product.findAll();
+    const data = await Product.fetchAll();
     res.render("shop/index", {
       path: "/shop",
       pageTitle: "Shop",
@@ -48,45 +47,20 @@ exports.getIndex = async (req, res, next) => {
 
 exports.postCart = async (req, res, next) => {
   const prodId = req.body.productId;
-  const cart = await req.user.getCart();
-  const prod = await cart.getProducts({ where: { id: prodId } });
-  console.log(prod);
+  const product = await Product.fetchById(prodId);
 
-  let newQuantity = 1;
-  if (prod.length > 0) {
-    const oldQuantity = prod[0].cartItem.quantity;
-    newQuantity += oldQuantity;
-    await cart.addProduct(prod, {
-      through: { quantity: newQuantity },
-    });
-  }
+  await req.user.addToCart(product);
 
-  const oldProd = await Product.findByPk(prodId);
-
-  if (oldProd) {
-    await cart.addProduct(oldProd, {
-      through: { quantity: newQuantity },
-    });
-  }
   res.redirect("/cart");
 };
 
 exports.postOrder = async (req, res, next) => {
-  const cart = await req.user.getCart();
-  const products = await cart.getProducts();
-  const order = await req.user.createOrder();
-  order.addProducts(
-    products.map((product) => {
-      product.orderItem = { quantity: product.cartItem.quantity };
-      return product;
-    })
-  );
-  await cart.setProducts(null);
+  await req.user.addOrder();
   res.redirect("/orders");
 };
 
 exports.getOrders = async (req, res, next) => {
-  const orders = await req.user.getOrders({ include: ["products"] });
+  const orders = await req.user.getOrders();
   console.log(orders);
 
   res.render("shop/order", {
@@ -104,25 +78,23 @@ exports.getChechkout = (req, res, next) => {
 };
 
 exports.postCartDeleteProduct = async (req, res, next) => {
-  const { id, price } = req.body;
-  const cart = await req.user.getCart();
-  const [prod] = await cart.getProducts({ where: { id } });
+  const { productId } = req.body;
+  console.log({ productId });
 
-  if (prod) {
-    await prod.cartItem.destroy();
-  }
+  await req.user.deleteCartItem(productId);
+
   res.redirect("/cart");
 };
 
 exports.getCart = async (req, res, next) => {
   try {
     const cart = await req.user.getCart();
-    const products = await cart.getProducts();
+    console.log({ cart });
 
     res.render("shop/cart", {
       path: "/cart",
       pageTitle: "Your Cart",
-      products: products || [],
+      products: cart ?? [],
     });
   } catch (error) {
     console.error("Error fetching cart:", error);
