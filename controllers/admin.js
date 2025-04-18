@@ -9,8 +9,15 @@ exports.getAddProduct = (req, res, next) => {
 };
 exports.postAddProduct = async (req, res, next) => {
   const { title, price, description, imageUrl } = req.body;
-  const { _id: userId } = req.user;
-  const prod = new Product(title, price, description, imageUrl, null, userId);
+  console.log({ user: req.user });
+
+  const prod = new Product({
+    title,
+    price,
+    description,
+    imageUrl,
+    userId: req.user,
+  });
   await prod.save();
   res.redirect("/");
 };
@@ -25,7 +32,7 @@ exports.getEditProduct = async (req, res, next) => {
     return res.redirect("/");
   }
 
-  const product = await Product.fetchById(productId);
+  const product = await Product.findById(productId);
   if (!product) {
     return res.redirect("/");
   }
@@ -40,17 +47,18 @@ exports.getEditProduct = async (req, res, next) => {
 exports.postEditProducts = async (req, res, next) => {
   const { title, price, description, imageUrl } = req.body;
   const id = req.params.productId;
-  const product = await Product.fetchById(id);
+  const product = await Product.findById(id);
   if (product) {
-    const newProd = new Product(title, price, description, imageUrl, id);
-    await newProd.save();
+    await product.updateOne({ title, price, description, imageUrl });
   }
 
   res.redirect("/admin/products");
 };
 
 exports.getProducts = async (req, res, next) => {
-  const products = await Product.fetchAll();
+  const products = await Product.find({});
+  // .select("title price imageUrl -_id")
+  // .populate("userId", "name");
   res.render("admin/products", {
     path: "/admin/products",
     pageTitle: "Admin Products",
@@ -60,6 +68,9 @@ exports.getProducts = async (req, res, next) => {
 
 exports.deleteProduct = async (req, res, next) => {
   const productId = req.params.productId;
-  Product.deleteProduct(productId);
+  const product = await Product.findById(productId);
+  if (product) {
+    await product.deleteOne();
+  }
   res.redirect("/admin/products");
 };

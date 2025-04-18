@@ -1,72 +1,13 @@
-const { ObjectId } = require("mongodb");
-const { getDb } = require("../util/database");
+const mongoose = require("mongoose");
 
-class Product {
-  constructor(title, price, description, imageUrl, id, userId) {
-    this.title = title;
-    this.price = price;
-    this.description = description;
-    this.imageUrl = imageUrl;
-    this._id = id;
-    this.userId = userId;
-  }
+const Schema = mongoose.Schema;
 
-  async save() {
-    const db = getDb();
-    let debOp;
-    const { _id: id, ...otherData } = this;
-    if (id) {
-      debOp = db
-        .collection("products")
-        .updateOne({ _id: new ObjectId(id) }, { $set: otherData });
-    } else {
-      debOp = db.collection("products").insertOne(this);
-    }
-    return debOp
-      .then((result) => {
-        console.log(result);
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }
+const productSchema = new Schema({
+  title: { type: String, required: true },
+  price: { type: Number, required: true },
+  description: { type: String, required: true },
+  imageUrl: { type: String, required: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+});
 
-  static fetchAll() {
-    const db = getDb();
-    return db
-      .collection("products")
-      .find()
-      .toArray()
-      .then((data) => {
-        return data;
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }
-
-  static fetchById(productId) {
-    const db = getDb();
-    console.log({ productId });
-
-    return db
-      .collection("products")
-      .find({ _id: new ObjectId(productId) })
-      .next()
-      .then((data) => {
-        return data;
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }
-
-  static async deleteProduct(productId) {
-    const db = getDb();
-    return db
-      .collection("products")
-      .deleteOne({ _id: new ObjectId(productId) })
-  }
-}
-
-module.exports = Product;
+module.exports = mongoose.model("Product", productSchema);

@@ -1,13 +1,13 @@
+const Order = require("../models/order");
 const Product = require("../models/product");
-// const Cart = require("../models/cart");
 
 exports.getProducts = async (req, res, next) => {
   try {
-    const data = await Product.fetchAll();
+    const data = await Product.find({});
 
     res.render("shop/product-list", {
       path: "/products",
-      pageTitle: "All products",
+      pageTitle: "All 0",
       prods: data,
     });
   } catch (error) {
@@ -18,7 +18,7 @@ exports.getProducts = async (req, res, next) => {
 exports.getProduct = async (req, res, next) => {
   const prodId = req.params.productId;
   try {
-    const product = await Product.fetchById(prodId);
+    const product = await Product.findById(prodId);
 
     if (product)
       res.render("shop/product-detail", {
@@ -34,7 +34,7 @@ exports.getProduct = async (req, res, next) => {
 
 exports.getIndex = async (req, res, next) => {
   try {
-    const data = await Product.fetchAll();
+    const data = await Product.find({});
     res.render("shop/index", {
       path: "/shop",
       pageTitle: "Shop",
@@ -47,9 +47,8 @@ exports.getIndex = async (req, res, next) => {
 
 exports.postCart = async (req, res, next) => {
   const prodId = req.body.productId;
-  const product = await Product.fetchById(prodId);
-
-  await req.user.addToCart(product);
+  const product = await Product.findById(prodId);
+  if (product) await req.user.addToCart(product);
 
   res.redirect("/cart");
 };
@@ -60,7 +59,7 @@ exports.postOrder = async (req, res, next) => {
 };
 
 exports.getOrders = async (req, res, next) => {
-  const orders = await req.user.getOrders();
+  const orders = await Order.getOrders(req.user._id);
   console.log(orders);
 
   res.render("shop/order", {
@@ -79,7 +78,6 @@ exports.getChechkout = (req, res, next) => {
 
 exports.postCartDeleteProduct = async (req, res, next) => {
   const { productId } = req.body;
-  console.log({ productId });
 
   await req.user.deleteCartItem(productId);
 
@@ -88,13 +86,17 @@ exports.postCartDeleteProduct = async (req, res, next) => {
 
 exports.getCart = async (req, res, next) => {
   try {
-    const cart = await req.user.getCart();
-    console.log({ cart });
+    const { cart } = await req.user.populate("cart.items.productId");
+
+    const items = cart?.items.map((item) => ({
+      ...item.productId._doc,
+      quantity: item.quantity,
+    }));
 
     res.render("shop/cart", {
       path: "/cart",
       pageTitle: "Your Cart",
-      products: cart ?? [],
+      products: items ?? [],
     });
   } catch (error) {
     console.error("Error fetching cart:", error);
