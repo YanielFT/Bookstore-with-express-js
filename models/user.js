@@ -4,8 +4,10 @@ const Order = require("./order");
 const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
-  name: { type: String, required: true },
   email: { type: String, required: true },
+  password: { type: String, required: true },
+  resetToken: String,
+  resetTokenExpiration: Date,
   cart: {
     items: [
       {
@@ -92,7 +94,7 @@ userSchema.methods.addOrder = async function () {
   const newOrder = {
     products,
     user: {
-      name: this.name,
+      email: this.email,
       userId: this._id,
     },
   };

@@ -60,7 +60,6 @@ exports.postOrder = async (req, res, next) => {
 
 exports.getOrders = async (req, res, next) => {
   const orders = await Order.getOrders(req.user._id);
-  console.log(orders);
 
   res.render("shop/order", {
     path: "/order",
