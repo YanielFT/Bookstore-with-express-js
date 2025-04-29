@@ -1,6 +1,5 @@
 const Product = require("../models/product");
 const { validationResult } = require("express-validator");
-const path = require("../util/path");
 const fileHelper = require("../util/file");
 exports.getAddProduct = (req, res, next) => {
   if (!req.session.isLoggedIn) {
@@ -149,16 +148,14 @@ exports.deleteProduct = async (req, res, next) => {
       return next(new Error("Product not found"));
     }
 
-    fileHelper.deleteFile(existProd.imageUrl)
+    fileHelper.deleteFile(existProd.imageUrl);
+    
     await Product.deleteOne({
       _id: productId,
       userId: req.user._id,
     });
+    res.status(200).json({ message: "Success!" });
   } catch (error) {
-    const err = new Error(error);
-    err.httpStatusCode = 500;
-    return next(err);
+    res.status(500).json({ message: "Deleting product failed" });
   }
-
-  res.redirect("/admin/products");
 };
