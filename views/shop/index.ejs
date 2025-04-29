@@ -15,7 +15,7 @@
       </header>
       <div class="card__image">
         <img
-          src="<%= product.imageUrl  %>"
+          src="/<%= product.imageUrl  %>"
           alt="<%= product.title %>"
         />
       </div>
@@ -31,10 +31,10 @@
         <%- include("../includes/add-to-cart.ejs", {product:product}) %>
         <% }  %>
       </div>
-
     </article>
     <% } %>
   </div>
+  <%- include("../includes/pagination.ejs") %>
   <% } else { %>
   <h1>Not products found</h1>
   <% } %>

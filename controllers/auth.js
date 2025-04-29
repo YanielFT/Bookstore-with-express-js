@@ -36,8 +36,7 @@ exports.getSignup = async (req, res, next) => {
 exports.postSignup = async (req, res, next) => {
   const { email, password, confirmPassword } = req.body;
   const errors = validationResult(req);
-  console.log({errors:errors.array()});
-  
+
   if (!errors.isEmpty()) {
     return res.status(422).render("auth/signup", {
       path: "/signup",
@@ -53,7 +52,13 @@ exports.postSignup = async (req, res, next) => {
   }
   const hash = await bcryptjs.hash(password, 12);
   const newUser = new User({ email, password: hash, cart: { items: [] } });
-  await newUser.save();
+  try {
+    await newUser.save();
+  } catch (error) {
+    const err = new Error(error);
+    err.httpStatusCode = 500;
+    return next(err);
+  }
   res.redirect("/login");
   try {
     return transporter.sendMail({
@@ -69,23 +74,28 @@ exports.postSignup = async (req, res, next) => {
 
 exports.postLogin = async (req, res, next) => {
   const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      req.flash("error", "Invalid email or password.");
+      return res.redirect("/login");
+    }
+    const isValidPass = await bcryptjs.compare(password, user.password);
+    console.log(isValidPass);
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    req.flash("error", "Invalid email or password.");
-    return res.redirect("/login");
+    if (!isValidPass) {
+      req.flash("error", "Invalid password.");
+      return res.redirect("/login");
+    }
+    req.session.isLoggedIn = true;
+    req.session.user = user;
+    await req.session.save();
+    res.redirect("/");
+  } catch (error) {
+    const err = new Error(error);
+    err.httpStatusCode = 500;
+    return next(err);
   }
-  const isValidPass = await bcryptjs.compare(password, user.password);
-  console.log(isValidPass);
-
-  if (!isValidPass) {
-    req.flash("error", "Invalid password.");
-    return res.redirect("/login");
-  }
-  req.session.isLoggedIn = true;
-  req.session.user = user;
-  await req.session.save();
-  res.redirect("/");
 };
 
 exports.postLogout = async (req, res, next) => {
@@ -140,12 +150,16 @@ exports.postReset = (req, res, next) => {
 
 exports.getNewPassword = async (req, res, next) => {
   const token = req.params.token;
-
-  const user = await User.findOne({
-    resetToken: token,
-    resetTokenExpiration: { $gt: Date.now() },
-  });
-  console.log({ user });
+  try {
+    const user = await User.findOne({
+      resetToken: token,
+      resetTokenExpiration: { $gt: Date.now() },
+    });
+  } catch (error) {
+    const err = new Error(error);
+    err.httpStatusCode = 500;
+    return next(err);
+  }
   if (!user) {
     flash("error", "Token is invalid or expired");
     return res.redirect("/login");
@@ -169,11 +183,17 @@ exports.postNewPassword = async (req, res, next) => {
   });
 
   if (user) {
-    const encodedPass = await bcryptjs.hash(password, 12);
-    user.password = encodedPass;
-    user.resetToken = undefined;
-    user.resetTokenExpiration = undefined;
-    await user.save();
-    res.redirect("/login");
+    try {
+      const encodedPass = await bcryptjs.hash(password, 12);
+      user.password = encodedPass;
+      user.resetToken = undefined;
+      user.resetTokenExpiration = undefined;
+      await user.save();
+      res.redirect("/login");
+    } catch (error) {
+      const err = new Error(error);
+      err.httpStatusCode = 500;
+      return next(err);
+    }
   }
 };
